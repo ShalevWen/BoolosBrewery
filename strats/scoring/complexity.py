@@ -3,9 +3,12 @@ import ast
 ID_CUTOFF = 64 # no reasonable name should be longer than this
 
 def score(src: str) -> int:
-    return score_ast(ast.parse(src))
+    return score_ast(ast.parse(src)) if src.isascii() else 1 << 64
 
-def score_ast(node: ast.AST):
+def id_cost(id: str):
+    return max(1, len(id) - ID_CUTOFF)
+
+def score_ast(node: ast.AST | None):
 
     def recurse(iterable):
         return sum(map(score_ast, iterable))
@@ -22,7 +25,7 @@ def score_ast(node: ast.AST):
                 return len(hex(node.value)) - 2
             return len(tuple(filter(lambda c: c != ' ', repr(node.value))))
         case ast.FormattedValue():
-            return 1 + score_ast(node.value)
+            return 1 + score_ast(node.value) + score_ast(node.format_spec)
         case ast.JoinedStr():
             return 1 + recurse(node.values)
         case ast.List() | ast.Tuple() | ast.Set():
@@ -30,7 +33,7 @@ def score_ast(node: ast.AST):
         case ast.Dict():
             return 1 + recurse(node.keys + node.values)
         case ast.Name():
-            return max(1, len(node.id) - ID_CUTOFF)
+            return id_cost(node.id)
         case ast.Starred():
             return 1 + score_ast(node.value)
         case ast.Expr():
@@ -44,13 +47,13 @@ def score_ast(node: ast.AST):
         case ast.Compare():
             return 1 + score_ast(node.left) + recurse(node.comparators)
         case ast.Call():
-            return 1 + score_ast(node.func) + recurse(node.args + node.keywords) 
+            return 1 + score_ast(node.func) + recurse(node.args + node.keywords)
         case ast.keyword():
-            return 1 + score_ast(node.value)
+            return 1 + score_ast(node.value) + (id_cost(node.arg) if node.arg else 0)
         case ast.IfExp():
             return 1 + recurse([node.test, node.body, node.orelse])
         case ast.Attribute():
-            return 1 + score_ast(node.value)
+            return 1 + score_ast(node.value) + id_cost(node.attr)
         case ast.NamedExpr():
             return 1 + score_ast(node.target) + score_ast(node.value)
         case ast.Subscript():
@@ -73,7 +76,7 @@ def score_ast(node: ast.AST):
             return 1 + score_ast(node.exc) + score_ast(node.cause)
         case ast.Assert():
             # asserts should be free, but not if they modify state
-            if any(isinstance(child, ast.Call) for child in ast.walk(node.test)):
+            if any(isinstance(child, (ast.Call, ast.Attribute)) for child in ast.walk(node.test)):
                 return score_ast(node.test)
             return 0
         case ast.Delete():
@@ -105,7 +108,7 @@ def score_ast(node: ast.AST):
         case ast.match_case():
             return 1 + score_ast(node.pattern) + score_ast(node.guard) + recurse(node.body)
         case ast.MatchValue() | ast.MatchSingleton():
-            return 1 + score_ast(node.value)
+            return 1 if isinstance(node.value, bool) else 1 + score_ast(node.value)
         case ast.MatchSequence():
             return 1 + recurse(node.patterns)
         case ast.MatchStar():
@@ -123,7 +126,7 @@ def score_ast(node: ast.AST):
         case ast.Lambda():
             return 1 + score_ast(node.args) + score_ast(node.body)
         case ast.arguments():
-            return 1 + recurse(node.posonlyargs + node.args + node.kwonlyargs)
+            return 1 + recurse(node.posonlyargs + node.args + node.kwonlyargs + node.defaults)
         case ast.arg():
             return 1
         case ast.Return() | ast.Yield() | ast.YieldFrom() | ast.Await():

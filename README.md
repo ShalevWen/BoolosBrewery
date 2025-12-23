@@ -122,3 +122,9 @@ If you think you have worked out a solution to this puzzle or its variants:
 
 > [!TIP]
 > Although submissions are ranked first and foremost by number of questions asked, they are also scored based on "minimal complexity". Even if you can't beat \#1, I strongly encourage you to submit your solutions!
+> I also strongly encourage trying to optimise existing solutions (in complexity or efficiency)!
+> Just be sure to credit your sources. :smile:
+
+> [!INFO]
+> The complexity calculator is not perfect (and is always subject to change), and is backed my human discretion of whether the submission should "count".
+> Although I find submissions which really break the complexity calculator very amusing (and please continue to submit them), I likely will not actually merge those submissions (just to remain in good faith).

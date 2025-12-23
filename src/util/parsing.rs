@@ -161,7 +161,7 @@ impl<'a> ParseError<'a> {
     }
 }
 
-impl<'a> Display for ParseError<'a> {
+impl Display for ParseError<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(parent) = &self.parent {
             Display::fmt(parent, f)?;
